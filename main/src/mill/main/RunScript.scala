@@ -3,7 +3,7 @@ package mill.main
 import java.nio.file.NoSuchFileException
 
 import ammonite.interp.Interpreter
-import ammonite.ops.{Path, read}
+import ammonite.ops.{Path, RelPath, read}
 import ammonite.runtime.SpecialClassLoader
 import ammonite.util.Util.CodeSource
 import ammonite.util.{Name, Res, Util}
@@ -23,6 +23,8 @@ import scala.reflect.ClassTag
   * subsystem
   */
 object RunScript{
+  var log: Logger = null
+
   def runScript(home: Path,
                 wd: Path,
                 path: Path,
@@ -32,6 +34,8 @@ object RunScript{
                 log: Logger,
                 env : Map[String, String])
   : (Res[(Evaluator[Any], Seq[PathRef], Either[String, Seq[Js.Value]])], Seq[(Path, Long)]) = {
+    log.info("Attaching logger")
+    this.log = log
 
     val (evalState, interpWatched) = stateCache match{
       case Some(s) if watchedSigUnchanged(s.watched) => Res.Success(s) -> s.watched
@@ -39,7 +43,7 @@ object RunScript{
         instantiateInterpreter match{
           case Left((res, watched)) => (res, watched)
           case Right(interp) =>
-            interp.watch(path)
+            interp.watch(path) // TODO: Fix
             val eval =
               for(rootModule <- evaluateRootModule(wd, path, interp, log))
               yield Evaluator.State(
@@ -200,6 +204,9 @@ object RunScript{
 
   def evaluate(evaluator: Evaluator[_],
                targets: Agg[Task[Any]]): (Seq[PathRef], Either[String, Seq[(Any, Option[upickle.Js.Value])]]) = {
+    if (this.log != null) {
+      this.log.info(targets.toString)
+    }
     val evaluated = evaluator.evaluate(targets)
     val watched = evaluated.results
       .iterator

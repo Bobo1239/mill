@@ -38,6 +38,7 @@ object Main {
     import ammonite.main.Cli
 
     val removed = Set("predef-code", "no-home-predef")
+
     var interactive = false
     val interactiveSignature = Arg[Config, Unit](
       "interactive", Some('i'),
@@ -47,8 +48,19 @@ object Main {
         c
       }
     )
+
+    var scriptPath = pwd / "build.sc"
+    val scriptPathSignature = Arg[Config, String](
+      "path", Some('p'),
+      "Manually specify the path to the build.sc",
+      (c, v) =>{
+        scriptPath = Path(v, pwd)
+        c
+      }
+    )
+
     val millArgSignature =
-      Cli.genericSignature.filter(a => !removed(a.name)) :+ interactiveSignature
+      Cli.genericSignature.filter(a => !removed(a.name)) :+ interactiveSignature :+ scriptPathSignature
 
     val millHome = mill.util.Ctx.defaultHome
 
@@ -118,7 +130,7 @@ object Main {
             runner.printInfo("Loading...")
             (runner.watchLoop(isRepl = true, printing = false, _.run()), runner.stateCache)
           } else {
-            (runner.runScript(pwd / "build.sc", leftoverArgs), runner.stateCache)
+            (runner.runScript(scriptPath, leftoverArgs), runner.stateCache)
           }
       }
 
